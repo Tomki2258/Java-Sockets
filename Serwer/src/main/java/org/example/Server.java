@@ -5,6 +5,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class Server {
     private ServerSocket serverSocket;
@@ -12,11 +13,17 @@ public class Server {
     private PrintWriter printWriter = null;
     private ArrayList<ClientHandler> handlers = new ArrayList<>();
 
+    public void close() throws IOException {
+        serverSocket.close();
+    }
     public Server() throws IOException {
         serverSocket = new ServerSocket(3000);
     }
     public void broadcast(String message) {
-        handlers.forEach(handler -> handler.send(message));
+        handlers.forEach(handler -> handler.send(handler.getClientName() + ": " + message));
+    }
+    public void singleBrodcast(String message,ClientHandler clientHandler){
+        clientHandler.send(message);
     }
     public void listen() throws IOException{
         System.out.println("Server started");
@@ -28,34 +35,24 @@ public class Server {
             handlers.add(handler);
         }
     }
-    private void finishSocket() throws IOException , SocketException {
-        socket.close();
-        serverSocket.close();
-        System.out.println("Server closed");
-    }
-    private void resendMessage(String message){
-        if(message.equals("Siemanko")){
-            printWriter.println("Siemanko rowniez !");
-        }
-    }
-    public void serveClient() throws IOException {
-        socket = serverSocket.accept();
-        InputStream input = socket.getInputStream();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(input));
-        OutputStream output = socket.getOutputStream();
-        PrintWriter writer = new PrintWriter(output, true);
-        String message;
-        writer.println("Hello!");
-        while((message = reader.readLine()) != null) {
-            writer.println(message);
-        }
-        socket.close();
-    }
     public void removeHandler(ClientHandler handler) {
         handlers.remove(handler);
     }
-    public void disconnectHandlers() {
-        handlers.forEach(handler-> handler.send("Bye!"));
-        handlers.clear();
+    public String getNickNames(){
+        String nickNames = null;
+        for (ClientHandler client : handlers){
+            nickNames += client.getClientName() + "\n";
+        }
+        return "All chat users :" + nickNames;
+    }
+    public void recipentMessage(String message,ClientHandler sender){
+        List<String> splittedMessage = List.of(message.split(" ",3));
+        for (ClientHandler client : handlers){
+            if(client.getClientName().equals(splittedMessage.get(1))){
+                singleBrodcast(splittedMessage.get(3),client);
+                return;
+            }
+        }
+        singleBrodcast("Wrong with minecraft private message",sender);
     }
 }
